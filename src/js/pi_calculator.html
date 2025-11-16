@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+        #controls {
+            margin-bottom: 20px;
+        }
+        input[type="number"] {
+            padding: 10px 12px;
+            font-size: 16px;
+            width: 150px;
+            margin-right: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background-color: white;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        button {
+            padding: 8px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #stopBtn:not(:disabled) {
+            background-color: #f56565;
+        }
+        #stopBtn:not(:disabled):hover {
+            background-color: #e53e3e;
+        }
+        #output {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #555;
+            display: none;
+        }
+        #status {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 15px;
+            font-weight: 600;
+            display: none;
+        }
+        #references {
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 12px;
+            color: #888;
+            text-align: left;
+        }
+        #references a {
+            color: #666;
+            text-decoration: none;
+        }
+        #references a:hover {
+            color: #4CAF50;
+            text-decoration: underline;
+        }
+        
+        /* Mobile improvements */
+        @media (max-width: 600px) {
+            #controls {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            input[type="number"] {
+                width: 100%;
+                margin-right: 0;
+                margin-bottom: 5px;
+                box-sizing: border-box;
+            }
+            
+            button {
+                width: 100%;
+            }
+            
+            #status {
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                line-height: 1.5;
+            }
+            
+            #references {
+                font-size: 11px;
+            }
+            
+            body {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Pi Calculator</h1>
+    <div id="references">
+        Implementation described in a blog post by <a href="https://swharden.com/" target="_blank">Scott Harden</a>
+    </div>
+    <div id="controls">
+        <label for="digits">Number of digits:</label>
+        <input type="number" id="digits" value="1000" min="1" max="100000">
+        <button id="calculateBtn" onclick="calculatePi()">Calculate</button>
+        <button id="stopBtn" onclick="stopCalculation()" disabled>Stop</button>
+    </div>
+    <div id="status"></div>
+    <div id="output"></div>
+
+    <script>
+        let stopCalculationFlag = false;
+        let currentTimeout = null;
+
+        function calculatePi() {
+            const maxDigits = parseInt(document.getElementById('digits').value) || 1000;
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            const calculateBtn = document.getElementById('calculateBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            if (maxDigits < 1) {
+                alert('Please enter a positive number');
+                return;
+            }
+
+            // Reset flags
+            stopCalculationFlag = false;
+            output.textContent = '';
+            status.textContent = `Calculated 0 of ${maxDigits.toLocaleString()} digits (0.000 sec, 0.0 digits/sec)`;
+            output.style.display = 'block';
+            status.style.display = 'block';
+            calculateBtn.disabled = true;
+            stopBtn.disabled = false;
+
+            const startTime = performance.now();
+            let charsPrinted = 0;
+            let outputText = '';
+
+            // BigInt constants
+            const FOUR = 4n;
+            const SEVEN = 7n;
+            const TEN = 10n;
+            const THREE = 3n;
+            const TWO = 2n;
+            const ONE = 1n;
+
+            // Initialize variables as BigInt
+            let k = 1n;
+            let l = 3n;
+            let n = 3n;
+            let q = 1n;
+            let r = 0n;
+            let t = 1n;
+
+            let nn;
+            let nr;
+
+            function processNext() {
+                if (stopCalculationFlag || charsPrinted >= maxDigits + 2) {
+                    const endTime = performance.now();
+                    const elapsedSeconds = ((endTime - startTime) / 1000).toFixed(3);
+                    status.textContent = `Calculated Pi to ${maxDigits.toLocaleString()} digits in ${elapsedSeconds} sec`;
+                    calculateBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    return;
+                }
+
+                // Process a batch of iterations to keep UI responsive
+                let iterations = 0;
+                const maxIterationsPerBatch = 100;
+
+                while (charsPrinted < maxDigits + 2 && iterations < maxIterationsPerBatch && !stopCalculationFlag) {
+                    // Condition: (FOUR * q + r - t) < (n * t)
+                    if ((FOUR * q + r - t) < (n * t)) {
+                        charsPrinted++;
+                        outputText += n.toString();
+
+                        if (charsPrinted === 1) {
+                            outputText += '.';
+                            charsPrinted++;
+                        }
+
+                        if (charsPrinted - 2 >= maxDigits) {
+                            break;
+                        }
+
+                        nr = TEN * (r - (n * t));
+                        // n = TEN * (THREE * q + r) / t - (TEN * n)
+                        n = (TEN * (THREE * q + r)) / t - (TEN * n);
+                        q *= TEN;
+                        r = nr;
+                    } else {
+                        nr = (TWO * q + r) * l;
+                        // nn = (q * (SEVEN * k) + TWO + r * l) / (t * l)
+                        nn = (q * (SEVEN * k) + TWO + r * l) / (t * l);
+                        q *= k;
+                        t *= l;
+                        l += TWO;
+                        k += ONE;
+                        n = nn;
+                        r = nr;
+                    }
+
+                    iterations++;
+                }
+
+                // Update output periodically
+                output.textContent = outputText;
+                
+                // Update status with current progress
+                const digitsCalculated = Math.max(0, charsPrinted - 2); // Subtract 2 for "3."
+                const elapsedSeconds = (performance.now() - startTime) / 1000;
+                const rate = elapsedSeconds > 0 ? (digitsCalculated / elapsedSeconds).toFixed(1) : '0.0';
+                status.textContent = `Calculated ${digitsCalculated.toLocaleString()} of ${maxDigits.toLocaleString()} digits (${elapsedSeconds.toFixed(3)} sec, ${rate} digits/sec)`;
+                
+                // Continue processing
+                if (!stopCalculationFlag && charsPrinted < maxDigits + 2) {
+                    currentTimeout = setTimeout(processNext, 0);
+                } else {
+                    const endTime = performance.now();
+                    const finalElapsedSeconds = ((endTime - startTime) / 1000).toFixed(3);
+                    const finalDigitsCalculated = Math.max(0, charsPrinted - 2);
+                    const finalRate = finalElapsedSeconds > 0 ? (finalDigitsCalculated / parseFloat(finalElapsedSeconds)).toFixed(1) : '0.0';
+                    status.textContent = `Calculated Pi to ${finalDigitsCalculated.toLocaleString()} digits in ${finalElapsedSeconds} sec (${finalRate} digits/sec)`;
+                    calculateBtn.disabled = false;
+                    stopBtn.disabled = true;
+                }
+            }
+
+            // Start processing
+            processNext();
+        }
+
+        function stopCalculation() {
+            stopCalculationFlag = true;
+            if (currentTimeout) {
+                clearTimeout(currentTimeout);
+            }
+            const output = document.getElementById('output');
+            const digitsCalculated = Math.max(0, output.textContent.length - 2); // Subtract 2 for "3."
+            document.getElementById('calculateBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('status').textContent = `Calculation stopped. Calculated ${digitsCalculated.toLocaleString()} digits.`;
+        }
+    </script>
+</body>
+</html>
