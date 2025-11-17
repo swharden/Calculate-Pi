@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Calculate Pi</title>
+    <style>
+        /* make sizing predictable and easier to constrain on small screens */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f6f8fa;
+            --panel: #ffffff;
+            --muted: #475569;
+            --accent: #0b74de;
+            --accent-2: #00a3ff;
+            --glass: rgba(2, 6, 23, 0.03);
+            --ui-border: rgba(11, 116, 222, 0.12);
+            --radius: 10px;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;
+        }
+
+        a {
+            text-decoration: none;
+            color: blue;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        html,
+        body {
+            height: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            /* prevent accidental horizontal scrolling */
+        }
+
+        body {
+            font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+            color: #0b1722;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            display: flex;
+            align-items: flex-start;
+            box-sizing: border-box;
+        }
+
+        /* page-level container removed the boxed card look; spacing preserved */
+        .page {
+            width: 100%;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1rem;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            letter-spacing: 0.4px
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.95rem
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        input[type=number] {
+            background: var(--glass);
+            border: 1px solid var(--ui-border);
+            color: #0b1722;
+            padding: 8px 10px;
+            border-radius: 8px;
+            outline: none;
+            font-family: var(--mono);
+            min-width: 0;
+            width: 80px;
+            max-width: 40vw;
+        }
+
+        button {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--ui-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all .12s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        button:hover {
+            box-shadow: 0 6px 18px rgba(11, 116, 222, 0.06)
+        }
+
+        button:active {
+            transform: translateY(0)
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: default
+        }
+
+        .start {
+            background: #10b981;
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 0 18px rgba(16, 185, 129, 0.15);
+        }
+
+        .stop {
+            background: #f8d7da;
+            color: #cb2431;
+            border: none;
+            box-shadow: 0 0 18px rgba(203, 36, 49, 0.15);
+        }
+
+        #status {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: #0b1722;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .terminal {
+            /* inline terminal output that grows the page instead of scrolling */
+            background: transparent;
+            padding: 6px 4px;
+            border: 0;
+            font-family: var(--mono);
+            color: #6b7280;
+            font-size: 0.95rem;
+            line-height: 1.38;
+            white-space: normal;
+            /* allow normal wrapping */
+            word-break: break-all;
+            /* strongest break behavior */
+            overflow-wrap: break-word;
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+            hyphens: auto;
+        }
+
+
+        /* no blinking cursor */
+
+        .foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 0.82rem
+        }
+
+        @media (max-width:480px) {
+            body {
+                padding: 12px 10px 60px 10px;
+            }
+
+            .page {
+                padding: 0;
+                margin: .5rem;
+            }
+
+            .header {
+                gap: 8px;
+            }
+
+            h1 {
+                font-size: 1.05rem;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+
+            .toolbar label {
+                width: 100%;
+            }
+
+            input[type=number] {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            /* ensure terminal can't overflow */
+            .terminal {
+                font-size: 0.95rem;
+                word-break: break-word;
+                overflow-wrap: break-word;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page">
+        <div class="header">
+            <div>
+                <h1>Calculate Pi</h1>
+                <div class="subtitle">
+                    as described in
+                    <a href="">this article</a>
+                    by
+                    <a href="https://swharden.com/about/">Scott Harden</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <label for="digitsInput">Digits</label>
+            <input id="digitsInput" type="number" min="1" value="3000" />
+            <button id="startBtn" class="start">Start</button>
+            <button id="stopBtn" class="stop" disabled>Stop</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="output" class="terminal"></div>
+
+    </div>
+
+    <script>
+
+        let currentController = null;
+
+        async function streamPiDigits(maxDigits, signal) {
+
+            const output = document.getElementById("output");
+            const status = document.getElementById("status");
+
+            const refreshAfterDigits = 100;
+            const startTime = performance.now();
+
+            const len = Math.floor((10 * maxDigits) / 3);
+            const a = new Array(len + 1).fill(2);
+            let nines = 0;
+            let predigit = 0;
+
+            for (let j = 1; j <= maxDigits; j++) {
+                if (signal && signal.aborted) {
+                    status.textContent = `Aborted after ${Math.max(0, j - 1).toLocaleString()} of ${maxDigits.toLocaleString()} digits`;
+                    return;
+                }
+
+                let q = 0;
+
+                for (let i = len; i >= 1; i--) {
+                    const x = 10 * a[i] + q * i;
+                    a[i] = x % (2 * i - 1);
+                    q = Math.floor(x / (2 * i - 1));
+                }
+
+                a[1] = q % 10;
+                q = Math.floor(q / 10);
+
+                if (q === 9) {
+                    nines++;
+                }
+                else if (q === 10) {
+                    output.textContent += (predigit + 1);
+                    for (let k = 1; k <= nines; k++) output.textContent += "0";
+                    predigit = 0;
+                    nines = 0;
+                }
+                else {
+                    if (j > 1) output.textContent += predigit;
+                    if (j === 2) output.textContent += ".";
+                    predigit = q;
+
+                    if (nines !== 0) {
+                        for (let k = 1; k <= nines; k++) output.textContent += "9";
+                        nines = 0;
+                    }
+                }
+
+                const elapsedSeconds = (performance.now() - startTime) / 1000;
+                const rate = elapsedSeconds > 0 ? (j / elapsedSeconds).toFixed(1) : '0.0';
+                status.innerHTML = `Calculated ${j.toLocaleString()} digits in (${elapsedSeconds.toFixed(3)} sec <br> Average ${rate} digits/sec`;
+
+                if (j % refreshAfterDigits === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    if (signal && signal.aborted) {
+                        status.textContent = `Aborted after ${j.toLocaleString()} of ${maxDigits.toLocaleString()} digits`;
+                        return;
+                    }
+                }
+            }
+
+            const elapsedSeconds = (performance.now() - startTime) / 1000;
+            const meanRate = elapsedSeconds > 0 ? (maxDigits / elapsedSeconds).toFixed(1) : '0.0';
+            status.innerHTML = `Calculated ${maxDigits.toLocaleString()} digits in ${elapsedSeconds.toFixed(3)} sec <br> Average ${meanRate} digits/sec`;
+        }
+
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            const input = document.getElementById('digitsInput');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+
+            let max = parseInt(input.value, 10);
+            if (!Number.isFinite(max) || max < 1) {
+                alert('Please enter a positive integer for digits.');
+                return;
+            }
+
+            // prepare UI
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            output.textContent = '';
+            status.textContent = 'Starting...';
+
+            currentController = new AbortController();
+            try {
+                await streamPiDigits(max, currentController.signal);
+            }
+            finally {
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                currentController = null;
+            }
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            if (currentController) {
+                currentController.abort();
+            }
+        });
+
+        // keyboard: Enter to start, Escape to stop
+        document.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') document.getElementById('startBtn').click();
+            if (ev.key === 'Escape') document.getElementById('stopBtn').click();
+        });
+
+    </script>
+
+</body>
+
+</html>

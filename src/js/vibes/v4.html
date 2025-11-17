@@ -1,0 +1,70 @@
+<html>
+
+<body>
+
+    <div id="status"></div>
+    <div id="output" style="font-family: monospace; word-wrap: break-word;"></div>
+
+    <script>
+
+        async function streamPiDigits(maxDigits) {
+
+            const output = document.getElementById("output");
+            const status = document.getElementById("status");
+
+            const refreshAfterDigits = 100;
+            const startTime = performance.now();
+
+            const len = Math.floor((10 * maxDigits) / 3);
+            const a = new Array(len + 1).fill(2);
+            let nines = 0;
+            let predigit = 0;
+
+            for (let j = 1; j <= maxDigits; j++) {
+                let q = 0;
+
+                for (let i = len; i >= 1; i--) {
+                    const x = 10 * a[i] + q * i;
+                    a[i] = x % (2 * i - 1);
+                    q = Math.floor(x / (2 * i - 1));
+                }
+
+                a[1] = q % 10;
+                q = Math.floor(q / 10);
+
+                if (q === 9) {
+                    nines++;
+                }
+                else if (q === 10) {
+                    output.textContent += (predigit + 1);
+                    for (let k = 1; k <= nines; k++) output.textContent += "0";
+                    predigit = 0;
+                    nines = 0;
+                }
+                else {
+                    if (j > 1) output.textContent += predigit;
+                    if (j === 2) output.textContent += ".";
+                    predigit = q;
+
+                    if (nines !== 0) {
+                        for (let k = 1; k <= nines; k++) output.textContent += "9";
+                        nines = 0;
+                    }
+                }
+
+                const elapsedSeconds = (performance.now() - startTime) / 1000;
+                const rate = elapsedSeconds > 0 ? (j / elapsedSeconds).toFixed(1) : '0.0';
+                status.textContent = `Calculated ${j.toLocaleString()} of ${maxDigits.toLocaleString()} digits (${elapsedSeconds.toFixed(3)} sec, ${rate} digits/sec)`;
+
+                if (j % refreshAfterDigits === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
+        }
+
+        streamPiDigits(10000);
+    </script>
+
+</body>
+
+</html>
