@@ -1,6 +1,10 @@
-# Calculate-Pi
+# Calculate Pi
 
-Exploring different methods for estimating Pi
+Exploring different methods for calculating Pi
+
+## Article
+
+This repository is referenced in the blog post https://swharden.com/blog/2025-11-16-streaming-pi-digits/
 
 ## Resources 
 * [A Spigot Algorithm for the Digits of Pi](https://www.cs.williams.edu/~heeringa/classes/cs135/s15/readings/spigot.pdf) (1995) by Stanley Rabinowitz and Stan Wagon
